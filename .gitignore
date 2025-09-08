@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Environment
+.env
+*.env
+
+# Data
+data/*.csv
+data/*.parquet
+data/*.feather
+
+# Reports
+reports/tables/*
+reports/figures/*
+!reports/tables/.gitkeep
+!reports/figures/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
