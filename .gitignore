@@ -16,6 +16,11 @@ build/
 data/*.csv
 data/*.parquet
 data/*.feather
+data/cache/
+data/checkpoints/
+
+# Keep cache dir structure
+!data/cache/.gitkeep
 
 # Reports
 reports/tables/*
