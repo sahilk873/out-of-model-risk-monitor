@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -8,10 +8,66 @@ import pandas as pd
 from risk_monitor.factor_models.standard_factors import CORE_FACTORS
 
 
+def denoise_covariance_rmt(
+    cov: pd.DataFrame,
+    returns: Optional[pd.DataFrame] = None,
+    method: str = "marchenko_pastur",
+) -> pd.DataFrame:
+    tickers = cov.index
+    n_assets = len(tickers)
+
+    std_dev = np.sqrt(np.diag(cov.values))
+    corr = cov.values / np.outer(std_dev, std_dev)
+    np.fill_diagonal(corr, 1.0)
+
+    eigenvalues, eigenvectors = np.linalg.eigh(corr)
+    idx = np.argsort(eigenvalues)[::-1]
+    eigenvalues = eigenvalues[idx]
+    eigenvectors = eigenvectors[:, idx]
+
+    if method == "shrinkage":
+        n_obs = len(returns) if returns is not None and len(returns) > 1 else 252
+        shrinkage_intensity = min(1.0, max(0.0, 1.0 - (n_assets / (n_obs * 2.0))))
+        identity_corr = np.eye(n_assets)
+        shrunk_corr = (1 - shrinkage_intensity) * corr + shrinkage_intensity * identity_corr
+        shrunk_cov = np.diag(std_dev) @ shrunk_corr @ np.diag(std_dev)
+        return pd.DataFrame(shrunk_cov, index=tickers, columns=tickers)
+
+    if method == "marchenko_pastur" and returns is not None:
+        n_obs = len(returns)
+        q = n_assets / n_obs if n_obs > 0 else 1.0
+        sigma = 1.0
+        lambda_max = sigma**2 * (1 + np.sqrt(q)) ** 2
+
+        noise_threshold = lambda_max
+        signal_eigenvalues = eigenvalues[eigenvalues > noise_threshold]
+
+        if len(signal_eigenvalues) == 0:
+            max_idx = max(1, n_assets // 2)
+            signal_eigenvalues = eigenvalues[:max_idx]
+            noise_idx = max_idx
+        else:
+            noise_idx = len(signal_eigenvalues)
+
+        noise_mean = eigenvalues[noise_idx:].mean() if len(eigenvalues) > noise_idx else 0.0
+        denoised_eigenvalues = eigenvalues.copy()
+        denoised_eigenvalues[noise_idx:] = noise_mean
+
+        denoised_corr = eigenvectors @ np.diag(denoised_eigenvalues) @ eigenvectors.T
+        np.fill_diagonal(denoised_corr, 1.0)
+        denoised_cov = np.diag(std_dev) @ denoised_corr @ np.diag(std_dev)
+
+        return pd.DataFrame(denoised_cov, index=tickers, columns=tickers)
+
+    return cov
+
+
 def compute_covariance(
     returns: pd.DataFrame,
     method: str = "ewma",
     halflife: int = 60,
+    denoise: bool = False,
+    denoise_method: str = "marchenko_pastur",
 ) -> pd.DataFrame:
     if method == "ewma":
         ewm = returns.ewm(span=2 * halflife - 1)
@@ -26,7 +82,16 @@ def compute_covariance(
         cov = returns.cov()
     else:
         raise ValueError(f"Unknown covariance method: {method}")
-    return cov.fillna(0.0)
+
+    cov = cov.fillna(0.0)
+
+    if denoise and cov.shape[0] > 1:
+        try:
+            cov = denoise_covariance_rmt(cov, returns=returns, method=denoise_method)
+        except Exception:
+            pass
+
+    return cov
 
 
 def factor_model_covariance(

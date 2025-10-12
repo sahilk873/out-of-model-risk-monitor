@@ -48,7 +48,7 @@ class SECEdgarClient:
     def get_filing_text_urls(self, cik: str, form: str = "10-K", count: int = 5) -> List[Dict]:
         subs = self.get_submissions(cik)
         filings = subs.get("filings", {}).get("recent", {})
-        urls = []
+        urls: list[dict[str, str]] = []
         for i, frm in enumerate(filings.get("form", [])):
             if frm == form and len(urls) < count:
                 acc = filings["accessionNumber"][i]
