@@ -231,6 +231,87 @@ class AlertGenerator:
                 )
         return self.alerts
 
+    def check_regime_stability(
+        self,
+        stability_index: float,
+        threshold: float = 0.6,
+    ) -> List[RiskAlert]:
+        if stability_index < threshold:
+            self.alerts.append(
+                RiskAlert(
+                    title="Unstable volatility regime",
+                    severity="high" if stability_index < 0.4 else "medium",
+                    description=(
+                        f"Volatility regime stability index is {stability_index:.2f}, "
+                        f"below {threshold:.2f} threshold. Portfolio risk estimates "
+                        f"may be unreliable during regime transitions."
+                    ),
+                    evidence=[
+                        f"Regime stability index: {stability_index:.2f}",
+                        f"Threshold: {threshold:.2f}",
+                        "Low stability indicates frequent regime switching",
+                    ],
+                    module="regime_detection",
+                    metric_value=stability_index,
+                    threshold=threshold,
+                )
+            )
+        return self.alerts
+
+    def check_crowding(
+        self,
+        aggregate_score: float,
+        threshold: float = 0.5,
+    ) -> List[RiskAlert]:
+        if aggregate_score > threshold:
+            self.alerts.append(
+                RiskAlert(
+                    title="Elevated crowding risk detected",
+                    severity="high" if aggregate_score > 0.7 else "medium",
+                    description=(
+                        f"Crowding aggregate score is {aggregate_score:.2f}, "
+                        f"exceeding {threshold:.2f} threshold. Portfolio may "
+                        f"have concentrated positions in crowded trades."
+                    ),
+                    evidence=[
+                        f"Crowding score: {aggregate_score:.2f}",
+                        f"Threshold: {threshold:.2f}",
+                        "High crowding indicates unwind risk",
+                    ],
+                    module="crowding",
+                    metric_value=aggregate_score,
+                    threshold=threshold,
+                )
+            )
+        return self.alerts
+
+    def check_liquidity(
+        self,
+        transaction_costs: pd.Series,
+        threshold: float = 0.3,
+    ) -> List[RiskAlert]:
+        high_cost = transaction_costs[transaction_costs > threshold]
+        for ticker, cost in high_cost.items():
+            self.alerts.append(
+                RiskAlert(
+                    title=f"Liquidity risk: {ticker}",
+                    severity="medium" if cost > threshold * 1.5 else "low",
+                    description=(
+                        f"Estimated transaction cost for {ticker} is {cost:.2%}, "
+                        f"indicating elevated liquidity risk."
+                    ),
+                    evidence=[
+                        f"Transaction cost: {cost:.2%}",
+                        f"Threshold: {threshold:.2%}",
+                        "High costs suggest limited liquidity",
+                    ],
+                    module="transaction_costs",
+                    metric_value=float(cost),
+                    threshold=threshold,
+                )
+            )
+        return self.alerts
+
     def generate_report(self) -> List[Dict]:
         sorted_alerts = sorted(
             self.alerts,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import matplotlib
 
@@ -60,7 +60,6 @@ def plot_risk_attribution(
     fac_contrib = attribution_result["factor_contrib_pct"]
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
-    # Factor contributions
     factors = list(fac_contrib.keys())
     values = list(fac_contrib.values())
     colors = ["#e74c3c" if v < 0 else "#2ecc71" for v in values]
@@ -78,7 +77,6 @@ def plot_risk_attribution(
             fontsize=9,
         )
 
-    # Risk decomposition pie
     labels = ["Factor Risk", "Specific Risk"]
     sizes = [
         attribution_result.get("factor_risk_pct_of_total", 0),
@@ -168,7 +166,6 @@ def plot_stress_decomposition(
 ):
     fig, axes = plt.subplots(1, 3, figsize=(16, 5))
 
-    # By security (top 10)
     if "by_security" in stress_results.get("historical", {}):
         sec = pd.Series(stress_results["historical"]["by_security"])
         top_sec = sec.abs().sort_values(ascending=False).head(10)
@@ -182,7 +179,6 @@ def plot_stress_decomposition(
         axes[0].set_title("Top Security Contributions")
         axes[0].axvline(0, color="black", linewidth=0.5)
 
-    # By factor
     if "by_factor" in stress_results.get("historical", {}):
         fac = pd.Series(stress_results["historical"]["by_factor"])
         axes[1].barh(
@@ -195,7 +191,6 @@ def plot_stress_decomposition(
         axes[1].set_title("Factor Contributions")
         axes[1].axvline(0, color="black", linewidth=0.5)
 
-    # By sector
     if "by_sector" in stress_results.get("historical", {}):
         sec2 = pd.Series(stress_results["historical"]["by_sector"])
         axes[2].barh(
@@ -215,6 +210,110 @@ def plot_stress_decomposition(
     plt.close()
 
 
+def plot_regime_summary(
+    regime_result: Optional[Dict] = None,
+    save_path: str = "reports/figures/regime_summary.png",
+):
+    if regime_result is None:
+        return
+    regime_stats = regime_result.get("regime_stats")
+    if regime_stats is None or regime_stats.empty:
+        return
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+
+    regimes = regime_stats["regime"].tolist()
+    vols = regime_stats["annualized_vol_pct"].tolist()
+    freqs = regime_stats["freq_pct"].tolist()
+
+    colors_vol = sns.color_palette("YlOrRd", len(regimes))
+    axes[0].bar(regimes, vols, color=colors_vol)
+    axes[0].set_title("Regime Annualized Volatility")
+    axes[0].set_ylabel("Volatility (%)")
+    for i, v in enumerate(vols):
+        axes[0].text(i, v + 0.5, f"{v:.1f}%", ha="center", fontsize=9)
+
+    axes[1].bar(regimes, freqs, color=sns.color_palette("Blues", len(regimes)))
+    axes[1].set_title("Regime Frequency")
+    axes[1].set_ylabel("Occurrence (%)")
+    for i, f in enumerate(freqs):
+        axes[1].text(i, f + 0.5, f"{f:.1f}%", ha="center", fontsize=9)
+
+    if "transition_matrix" in regime_result:
+        tm = np.array(regime_result["transition_matrix"])
+        sns.heatmap(
+            tm,
+            annot=True,
+            fmt=".2f",
+            cmap="YlOrRd",
+            xticklabels=regimes,
+            yticklabels=regimes,
+            ax=axes[2],
+            cbar_kws={"label": "Transition Prob"},
+        )
+        axes[2].set_title("Regime Transition Matrix")
+        axes[2].set_ylabel("From")
+        axes[2].set_xlabel("To")
+
+    if "half_life_days" in regime_result:
+        extra_text = (
+            f"Stability: {regime_result.get('stability_index', 'N/A')} | "
+            f"Entropy: {regime_result.get('regime_entropy_mean', 'N/A')}"
+        )
+        fig.suptitle(
+            f"Volatility Regime Analysis — {extra_text}",
+            fontsize=12,
+            fontweight="bold",
+        )
+
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(save_path, dpi=150, bbox_inches="tight")
+    plt.close()
+
+
+def plot_crowding_summary(
+    crowding_result: Optional[Dict] = None,
+    save_path: str = "reports/figures/crowding_summary.png",
+):
+    if crowding_result is None:
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+    top = crowding_result.get("top_crowded", [])
+    if top:
+        axes[0].barh(
+            range(len(top)), list(range(len(top), 0, -1)), color=sns.color_palette("Reds", len(top))
+        )
+        axes[0].set_yticks(range(len(top)))
+        axes[0].set_yticklabels(top)
+        axes[0].set_title("Top Crowded Tickers")
+        axes[0].invert_xaxis()
+
+    agg = crowding_result.get("aggregate_score", 0)
+    hhi = crowding_result.get("herfindahl_index", 0)
+    metrics = ["Aggregate\nCrowding", "Herfindahl\nIndex"]
+    values = [agg, hhi]
+    colors = ["#e74c3c" if v > 0.5 else "#f39c12" for v in values]
+    bars = axes[1].bar(metrics, values, color=colors)
+    axes[1].axhline(0.5, color="red", linestyle="--", alpha=0.5, label="Warning Threshold")
+    axes[1].set_title("Crowding Metrics")
+    axes[1].legend()
+    for bar, v in zip(bars, values):
+        axes[1].text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.01,
+            f"{v:.3f}",
+            ha="center",
+            fontsize=10,
+        )
+
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(save_path, dpi=150, bbox_inches="tight")
+    plt.close()
+
+
 def generate_report(
     portfolio_summary: Dict,
     factor_exposures: pd.DataFrame,
@@ -223,17 +322,19 @@ def generate_report(
     theme_scores: pd.DataFrame,
     stress_results: Dict,
     alerts: List[Dict],
+    regime_result: Optional[Dict] = None,
+    crowding_result: Optional[Dict] = None,
     output_dir: str = "reports",
 ):
-    # Save tables
     save_table(factor_exposures, "factor_exposures")
     save_table(cluster_summary, "residual_clusters")
     save_table(theme_scores, "theme_scores")
     save_table(pd.DataFrame(alerts), "risk_alerts")
 
-    # Generate figures
     plot_factor_exposures(factor_exposures)
     plot_risk_attribution(risk_attribution)
     plot_residual_clusters(cluster_summary)
     plot_theme_radar(theme_scores)
     plot_stress_decomposition(stress_results)
+    plot_regime_summary(regime_result)
+    plot_crowding_summary(crowding_result)
