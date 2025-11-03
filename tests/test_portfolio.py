@@ -126,3 +126,22 @@ def test_validate_portfolio_set():
     w = pd.DataFrame({"AAPL": [0.05]}, index=pd.to_datetime(["2024-01-01"]))
     ps = PortfolioSet(portfolios={"ok": Portfolio(name="ok", weights=w)})
     assert len(validate_portfolio_set(ps)) == 0
+
+
+def test_portfolio_empty_weights():
+    with pytest.raises(ValueError, match="empty weights"):
+        Portfolio(name="empty", weights=pd.DataFrame())
+
+
+def test_portfolio_net_exposure():
+    w = pd.DataFrame(
+        {"AAPL": [0.05, 0.06], "MSFT": [0.03, 0.02]},
+        index=pd.to_datetime(["2024-01-01", "2024-01-02"]),
+    )
+    pf = Portfolio(name="test", weights=w)
+    assert pf.net_exposure.iloc[0] == 0.08
+
+
+def test_load_portfolio_csv_missing_file():
+    with pytest.raises(FileNotFoundError):
+        load_portfolio_csv("/nonexistent/path.csv")
