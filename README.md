@@ -1,8 +1,8 @@
 # Out-of-Model Risk Monitor
 
-**Detect hidden risks in systematic equity portfolios beyond standard factor models.**
+**Detect hidden risks in equity portfolios beyond standard factor models.**
 
-A production-quality quantitative research system for identifying thematic concentrations, residual return clusters, and model-blind risk factors that standard factor models (Barra, Axioma, etc.) miss. Built entirely on public data.
+A production-quality research system for identifying thematic concentrations, residual return clusters, and model-blind risk factors that standard factor models (Barra, Axioma, etc.) miss. Built entirely on public data.
 
 ---
 
@@ -195,7 +195,7 @@ make ci
 - **Missing data detected and reported** — not silently accepted
 - **No lookahead bias** — all factor regressions are backward-looking
 - **Theme labels auditable** — seed tickers, residual correlations, and text evidence visible
-- **Crowding metrics labeled** as public-data proxies (not true hedge-fund positioning)
+- **Crowding metrics labeled** as public-data proxies (not true fund positioning)
 - **Statistical significance reported** — bootstrap CIs, p-values, diagnostic tests
 - **Cluster validation** — silhouette scores and gap statistics, not arbitrary thresholds
 
@@ -210,7 +210,7 @@ make ci
 
 ## Disclaimer
 
-This is a research prototype using only public data. It is **not** a replacement for commercial risk models (Barra, Axioma, Northfield, etc.). Crowding metrics are public-data proxies, not true hedge-fund positioning data.
+This is a research prototype using only public data. It is **not** a replacement for commercial risk models (Barra, Axioma, Northfield, etc.). Crowding metrics are public-data proxies, not true fund positioning data.
 
 ---
 

@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "risk-monitor"
 version = "0.3.0"
-description = "Out-of-model risk monitor — quantitative systematic equity risk analysis"
+description = "Out-of-model risk monitor — equity risk analysis beyond standard factor models"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
     {name = "Risk Monitor Team"},
 ]
-keywords = ["quantitative-finance", "risk-management", "portfolio-analysis", "factor-models", "systematic-investing", "blackrock"]
+keywords = ["risk-management", "portfolio-analysis", "factor-models"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Financial and Insurance Industry",
