@@ -38,6 +38,11 @@ Thumbs.db
 *.swp
 *.swo
 
+# Coverage
+.coverage
+.coverage.*
+
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
+research/
